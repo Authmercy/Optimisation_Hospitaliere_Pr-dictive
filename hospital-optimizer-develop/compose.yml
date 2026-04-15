@@ -1,0 +1,51 @@
+services:
+
+  # Jupyter Lab pour coder et explorer les données
+  jupyter:
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile.jupyter
+    #image: jupyter/pyspark-notebook:spark-3.5.0
+    container_name: hospital-jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/notebooks
+      - ./data:/home/jovyan/data
+      - ./src:/home/jovyan/src
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
+      - hospital-net
+   # Data Lake local (stockage Bronze/Silver/Gold)
+  minio:
+    image: minio/minio
+    container_name: hospital-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Interface web
+    environment:
+      MINIO_ROOT_USER: hospital
+      MINIO_ROOT_PASSWORD: hospital123
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/minio:/data
+    networks:
+      - hospital-net
+
+  mlflow:
+    image: python:3.11-slim
+    container_name: hospital-mlflow
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["pip install mlflow --quiet && mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --allowed-hosts '*'"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow-data:/mlflow/artifacts
+    networks:
+      - hospital-net  
+networks:
+  hospital-net:
+    driver: bridge

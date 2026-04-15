@@ -1,0 +1,28 @@
+FROM jupyter/pyspark-notebook:spark-3.5.0
+
+USER root
+
+# Dépendances système pour CmdStan
+RUN apt-get update && apt-get install -y \
+    gcc g++ cmake make \
+    && apt-get clean
+
+# Télécharger les JARs S3A pour connexion MinIO
+RUN wget -q -P /usr/local/spark/jars/ \
+    https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    wget -q -P /usr/local/spark/jars/ \
+    https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+
+USER ${NB_UID}
+
+# Installer toutes les librairies du projet
+RUN pip install --no-cache-dir \
+    mlflow==2.10.0 \
+    prophet==1.1.5 \
+    cmdstanpy==1.2.0 \
+    tensorflow==2.15.0 \
+    PuLP==2.7.0 \
+    diffprivlib==0.6.4 \
+    minio==7.2.3 \
+    scikit-learn==1.4.0 && \
+    python -c "import cmdstanpy; cmdstanpy.install_cmdstan()"
